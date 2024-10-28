@@ -34,17 +34,13 @@ export default class GameScene extends Phaser.Scene {
     this.platformRight = new Platform(this, 500, 400, "redPlatform");
     this.platforms.add(this.platformLeft);
     this.platforms.add(this.platformRight);
+    this.platformLeft2 = new Platform(this, 500, 400, "greenPlatform");
+    this.platformRight2 = new Platform(this, 100, 400, "redPlatform");
+    this.platforms.add(this.platformLeft2);
+    this.platforms.add(this.platformRight2);
 
     this.spawnBall();
 
-    // Utilisation de collider pour gérer les collisions entre les balles et les plateformes
-    // this.physics.add.collider(
-    //   this.balls,
-    //   this.platforms,
-    //   this.handleBallPlatformCollision,
-    //   null,
-    //   this
-    // );
     this.physics.add.overlap(
       this.balls,
       this.platforms,
