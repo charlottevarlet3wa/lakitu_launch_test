@@ -1,90 +1,49 @@
-export default class Platform extends Phaser.GameObjects.Rectangle {
-  constructor(scene, x, y, color = 0x00ff00) {
-    super(scene, x, y, 150, 20, color); // Taille de la plateforme
+export default class Platform extends Phaser.Physics.Arcade.Sprite {
+  constructor(scene, x, y, texture) {
+    super(scene, x, y, texture);
     scene.add.existing(this);
-    scene.physics.add.existing(this, true); // Plateforme statique (mais animée)
+    scene.physics.add.existing(this, true); // Créé comme un objet statique
 
-    this.tolerance = 10; // Tolérance pour la détection de collision
-    this.initialY = y; // Position de départ en Y
+    this.tolerance = 10;
+    this.initialY = y;
     this.scene = scene;
 
-    // Tween pour mouvement horizontal permanent (aller-retour)
+    // Définir un tween pour le mouvement horizontal
     scene.tweens.add({
       delay: Phaser.Math.Between(500, 5000),
       targets: this,
-      x: x + 200, // Distance horizontale du mouvement
-      duration: 5000, // Durée en ms
-      yoyo: true, // Retourne au point de départ
-      repeat: -1, // Mouvement infini
+      x: x + 200,
+      duration: 5000,
+      yoyo: true,
+      repeat: -1,
       ease: "Sine.easeInOut",
+      onUpdate: () => {
+        this.body.updateFromGameObject(); // Synchronise la box de collision
+      },
     });
 
-    // Appelle un mouvement vertical de temps en temps
+    // Définir un tween pour le mouvement vertical
     this.startVerticalMovement();
   }
 
   startVerticalMovement() {
-    // Déclenche un mouvement vertical aléatoire toutes les 15 à 20 secondes
     this.scene.time.addEvent({
-      delay: Phaser.Math.Between(1000, 2000), // Délai aléatoire en ms
+      delay: Phaser.Math.Between(1000, 2000),
       callback: () => {
-        // Calcule une nouvelle position Y en fonction de la plateforme (coulissante vers le haut/bas)
-        let newY;
-        // Si la plateforme est verte
-        //   newY = this.y === 50 ? 300 : 50; // Alterne entre 50 et 300
-        newY = Phaser.Math.Between(50, 500); // Alterne entre 50 et 300
-
-        // Tween pour un mouvement vertical lissé
+        let newY = Phaser.Math.Between(50, 500);
         this.scene.tweens.add({
           targets: this,
           y: newY,
           duration: 4000,
           ease: "Sine.easeInOut",
-          onComplete: () => {
-            this.startVerticalMovement(); // Relance le mouvement vertical aléatoire
+          onUpdate: () => {
+            this.body.updateFromGameObject(); // Synchronise la box de collision
           },
+          onComplete: () => this.startVerticalMovement(),
         });
       },
       callbackScope: this,
-      loop: false, // Ne boucle pas immédiatement pour éviter d'empiler les événements
+      loop: false,
     });
-  }
-
-  checkBallCollision(ball) {
-    const ballBottom = ball.y + ball.displayHeight / 2;
-    const platformTop = this.y - this.height / 2;
-
-    const ballCenterX = ball.x;
-    const platformLeft = this.x - this.width / 2;
-    const platformRight = this.x + this.width / 2;
-
-    // Vérifie si la balle descend et est en contact avec la plateforme en x et y
-    if (
-      ballBottom >= platformTop - this.tolerance &&
-      ballBottom <= platformTop + this.tolerance &&
-      ballCenterX >= platformLeft &&
-      ballCenterX <= platformRight &&
-      ball.body.velocity.y > 0
-    ) {
-      console.log("Collision detected");
-      this.isHovered = true;
-      return true;
-    }
-
-    this.isHovered = false;
-    return false;
-  }
-
-  isBallFullyOnPlatform(ball) {
-    const ballLeft = ball.x - ball.displayWidth / 2;
-    const ballRight = ball.x + ball.displayWidth / 2;
-    const platformLeft = this.x - this.width / 2;
-    const platformRight = this.x + this.width / 2;
-
-    // Vérifie si la balle est entièrement sur la plateforme avec tolérance
-    return (
-      ballLeft >= platformLeft + this.tolerance &&
-      ballRight <= platformRight - this.tolerance
-    );
   }
 }

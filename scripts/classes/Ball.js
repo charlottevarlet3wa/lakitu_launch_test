@@ -13,6 +13,9 @@ export default class Ball extends Phaser.Physics.Arcade.Sprite {
 
     // Initialise la propriété isScored pour empêcher le score d'être incrémenté plusieurs fois
     this.isScored = false;
+    this.isLaunched = false; // Initialement, la balle n'est pas lancée
+
+    this.isDescending = false;
 
     // Propriétés spécifiques à la balle
     this.initialPosition = new Phaser.Math.Vector2(x, y); // Enregistre la position initiale
@@ -42,6 +45,16 @@ export default class Ball extends Phaser.Physics.Arcade.Sprite {
     // Active la gravité après le lancement
     this.body.setAllowGravity(true);
     this.body.setVelocity(launchVelocity.x, launchVelocity.y);
+    this.isLaunched = true; // Marque la balle comme lancée
+  }
+
+  preUpdate(time, delta) {
+    super.preUpdate(time, delta);
+
+    // Vérifie si la balle commence à descendre
+    if (this.body.velocity.y > 0) {
+      this.isDescending = true;
+    }
   }
 
   limitDragPosition(dragX, dragY) {

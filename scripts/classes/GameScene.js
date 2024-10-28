@@ -6,30 +6,52 @@ import Score from "./Score.js";
 export default class GameScene extends Phaser.Scene {
   constructor() {
     super({ key: "GameScene" });
-    this.balls = []; // Tableau pour stocker les balles
     this.startPoint = new Phaser.Math.Vector2();
     this.endPoint = new Phaser.Math.Vector2();
     this.isDragging = false;
   }
 
   preload() {
-    // Charger l'image de la balle
-    this.load.image("ball", "path/to/ball.png"); // Remplacez par le chemin correct
+    this.load.image("ball", "assets/images/ball.png");
+    this.load.image("greenPlatform", "assets/images/platformBlue.png");
+    this.load.image("redPlatform", "assets/images/platformRed.png");
   }
 
   create() {
-    // Initialisation du score
     this.score = new Score(this, 16, 16);
-
-    // Création du lance-pierre
     this.slingshot = new Slingshot(this, 400, 350);
 
-    // Création des plateformes
-    this.platformLeft = new Platform(this, 100, 400, 0x00ff00); // Plateforme verte
-    this.platformRight = new Platform(this, 500, 400, 0xff0000); // Plateforme rouge
+    // Initialise un groupe de physique pour les balles
+    this.balls = this.physics.add.group({
+      allowGravity: false, // Force les balles dans le groupe à ignorer la gravité par défaut
+    });
 
-    // Création de la première balle
+    // Créez un groupe statique pour les plateformes
+    this.platforms = this.physics.add.staticGroup();
+
+    // Ajoutez les plateformes au groupe
+    this.platformLeft = new Platform(this, 100, 400, "greenPlatform");
+    this.platformRight = new Platform(this, 500, 400, "redPlatform");
+    this.platforms.add(this.platformLeft);
+    this.platforms.add(this.platformRight);
+
     this.spawnBall();
+
+    // Utilisation de collider pour gérer les collisions entre les balles et les plateformes
+    // this.physics.add.collider(
+    //   this.balls,
+    //   this.platforms,
+    //   this.handleBallPlatformCollision,
+    //   null,
+    //   this
+    // );
+    this.physics.add.overlap(
+      this.balls,
+      this.platforms,
+      this.handleBallPlatformCollision,
+      null,
+      this
+    );
 
     // Gestion des événements de drag
     this.input.on("dragstart", (pointer, gameObject) => {
@@ -37,13 +59,12 @@ export default class GameScene extends Phaser.Scene {
         this.isDragging = true;
         this.startPoint.set(pointer.x, pointer.y);
         this.ball.body.setVelocity(0, 0);
-        this.ball.body.setAllowGravity(false); // Geler la balle
+        this.ball.body.setAllowGravity(false);
       }
     });
 
     this.input.on("drag", (pointer, gameObject, dragX, dragY) => {
       if (gameObject === this.ball && this.isDragging) {
-        // Limite la position `x` et `y` en fonction de la distance maximale
         this.ball.limitDragPosition(dragX, dragY);
       }
     });
@@ -52,64 +73,36 @@ export default class GameScene extends Phaser.Scene {
       if (gameObject === this.ball) {
         this.isDragging = false;
         this.endPoint.set(pointer.x, pointer.y);
-        this.ball.launch(this.startPoint, this.endPoint); // Lancer la balle
-        this.spawnBall(); // Crée une nouvelle balle
+        this.ball.launch(this.startPoint, this.endPoint);
+        this.spawnBall();
       }
-    });
-
-    // Ajout d'un écouteur pour la touche 'W'
-    this.input.keyboard.on("keydown-W", () => {
-      this.displayBallsInfo();
     });
   }
 
   update() {
-    this.balls = this.balls.filter((ball) => {
+    this.balls.children.each((ball) => {
       if (ball.isOutOfBounds(this.scale.width, this.scale.height)) {
         ball.destroy();
-        return false; // Exclut la balle du tableau si elle est hors des limites
       }
-
-      // Vérifier les collisions avec les plateformes
-      this.checkPlatformCollision(ball, this.platformLeft);
-      this.checkPlatformCollision(ball, this.platformRight);
-
-      return true;
     });
   }
 
   spawnBall() {
-    this.ball = new Ball(this, 400, 330, "ball"); // Utilise l'image de la balle
-    this.balls.push(this.ball); // Ajoute la balle au tableau
+    this.ball = new Ball(this, 400, 330, "ball");
+    this.ball.body.setAllowGravity(false);
+    this.balls.add(this.ball); // Ajoute la balle au groupe de balles
   }
 
-  checkPlatformCollision(ball, platform) {
-    // Vérifie que la balle n'a pas déjà été marquée comme scorée
-    if (!ball.isScored && platform.checkBallCollision(ball)) {
-      if (platform.isBallFullyOnPlatform(ball)) {
-        console.log("on");
+  handleBallPlatformCollision(ball, platform) {
+    if (!ball.isScored && ball.isLaunched && ball.isDescending) {
+      console.log("Collision avec la plateforme", platform.texture.key);
 
-        // Désactive temporairement le corps de la balle pour éviter d'autres collisions
-        ball.body.enable = false;
-        ball.isScored = true; // Marque la balle comme scorée
-        // ball.body.setBounce(2); // Léger rebond
+      ball.isScored = true;
+      this.score.increment();
 
-        // Utilise un délai pour supprimer la balle après la logique de collision
-        this.time.delayedCall(100, () => {
-          ball.destroy(); // Supprime la balle après un court délai
-          this.score.increment(); // Incrémente le score une seule fois
-        });
-      } else {
-        // La balle touche seulement le bord de la plateforme
-        ball.body.setBounce(0.2); // Léger rebond
-      }
+      this.time.delayedCall(50, () => {
+        ball.destroy();
+      });
     }
-  }
-
-  displayBallsInfo() {
-    console.log("Positions des balles existantes :");
-    this.balls.forEach((ball, index) => {
-      console.log(`Balle ${index + 1}: x=${ball.x}, y=${ball.y}`);
-    });
   }
 }
